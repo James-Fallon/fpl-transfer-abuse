@@ -43,5 +43,5 @@ def send_email(gw, transfer):
     s.login(me, pwd)
     # sendmail function takes 3 arguments: sender's address, recipient's address
     # and message to send - here it is sent as one string.
-    s.sendmail(me, email_addresses[transfer['name']], msg.as_string())
+    s.sendmail(me, email_addresses.values(), msg.as_string())
     s.quit()
