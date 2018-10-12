@@ -4,9 +4,7 @@ from pprint import pprint
 from send_email import send_email
 
 #Variables
-
 league_ID = 271140
-gameweek_number = 7
 
 # FPL API Endpoints
 transfers_url = 'https://fantasy.premierleague.com/drf/entry/{}/transfers'
@@ -31,54 +29,57 @@ def getUsers(league_id):
     standings = jsonResponse["standings"]["results"]
     return list(map(lambda x: (x["entry"], x["player_name"]), standings))
 
-def printTransferAndReturnPointsDelta(transfer):
+def parseTransfer(transfer):
     tr_in = transfer['element_in']
     tr_out = transfer['element_out']
-
-    transfer_string = all_player_details[tr_out]["second_name"] + "\t----->\t" + all_player_details[tr_in]["second_name"]
 
     tr_out_pnts = all_player_details[tr_out]['event_points']
     tr_in_pnts = all_player_details[tr_in]['event_points']
     delta = tr_in_pnts - tr_out_pnts
 
-    transfer_string += "\t|\tDelta: "
-    print(transfer_string, delta)
-    return delta
+    parsedTransfer = {
+        'out': all_player_details[tr_out]['web_name'],
+        'in': all_player_details[tr_in]['web_name'],
+        'delta': delta,
+        'out_photo': getPhotoOfPlayer(tr_out)
+    }
+    return parsedTransfer
 
-worst_points_delta = "No-one", 0
+lads_and_their_transfers = {}
 
 for id, name in getUsers(league_ID):
     json_transfers = requests.get(transfers_url.format(id)).json()
-    print("\n\n" + name)
-    print("-----------------------------")
-    this_weeks_transfers = [transfer for transfer in json_transfers["history"] if transfer["event"] == gameweek_number]
+    current_gameweek_number = json_transfers['entry']['current_event']
 
-    worse_single_points_delta = 0
-    worst_transfer = {}
+    this_weeks_transfers = [parseTransfer(transfer) for transfer in json_transfers["history"] if transfer["event"] == current_gameweek_number]
 
-    points_delta = 0
-    if(len(this_weeks_transfers) > 0):
-        for transfer in this_weeks_transfers:
-            single_points_delta = printTransferAndReturnPointsDelta(transfer)
-            points_delta += single_points_delta
-            if single_points_delta < worse_single_points_delta:
-                worse_single_points_delta = single_points_delta
-                worst_transfer = transfer
-        print("Points for transfers: ", points_delta)
-    else:
-        pprint("No transfers")
+    total_delta = 0
+    for transfer in this_weeks_transfers:
+        total_delta += transfer['delta']
 
-    print("-----------------------------")
-    if points_delta < worst_points_delta[1]:
-        worst_points_delta = name, points_delta
+    has_wildcarded = False
 
-        worst_transfer_of_the_week = {
-            'name': name.split()[0],
-            'delta': worse_single_points_delta,
-            'player_out': all_player_details[worst_transfer['element_out']]["second_name"],
-            'player_in':  all_player_details[worst_transfer['element_in']]["second_name"],
-            'photo': getPhotoOfPlayer(worst_transfer['element_out'])
-        }
+    for wildcard in json_transfers['wildcards']:
+        if wildcard['event'] == current_gameweek_number:
+            has_wildcarded = True
 
+    this_lads_details = {
+        'name': name,
+        'transfers': this_weeks_transfers,
+        'total_delta': total_delta,
+        'on_wildcard': has_wildcarded
+    }
 
-send_email(gameweek_number, worst_transfer_of_the_week)
+    lads_and_their_transfers[id] = this_lads_details
+
+worst_delta = -1, 0
+for lad in lads_and_their_transfers:
+    lads_total_delta = lads_and_their_transfers[lad]['total_delta']
+    if lads_total_delta < worst_delta[1]:
+        worst_delta = lad, lads_total_delta
+
+if worst_delta[0] == -1:
+    print("No-one messed up this week")
+else:
+    pprint(lads_and_their_transfers[worst_delta[0]])
+    #send_email(worst_delta)
