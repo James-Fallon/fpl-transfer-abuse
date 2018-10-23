@@ -67,7 +67,8 @@ for id, name in getUsers(league_ID):
         'name': name,
         'transfers': this_weeks_transfers,
         'total_delta': total_delta,
-        'on_wildcard': has_wildcarded
+        'on_wildcard': has_wildcarded,
+        'gw': current_gameweek_number
     }
 
     lads_and_their_transfers[id] = this_lads_details
@@ -82,4 +83,4 @@ if worst_delta[0] == -1:
     print("No-one messed up this week")
 else:
     pprint(lads_and_their_transfers[worst_delta[0]])
-    #send_email(worst_delta)
+    #send_email(lads_and_their_transfers[worst_delta[0]])
