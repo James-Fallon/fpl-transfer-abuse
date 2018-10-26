@@ -18,7 +18,7 @@ def send_email(lad_who_did_the_worst):
 
     msg = MIMEMultipart('alternative')
 
-    msg['Subject'] = "GW " + str(lad_who_did_the_worst['gw']) + ": not your week eh " + lad_who_did_the_worst['name'] + "?"
+    msg['Subject'] = "GW " + str(lad_who_did_the_worst['gw']) + ": not your week eh " + lad_who_did_the_worst['name'].split()[0] + "?"
     msg['From'] = me
     msg['To'] = email_addresses[lad_who_did_the_worst['name']]
     msg['CC'] = COMMASPACE.join(email_addresses.values())
