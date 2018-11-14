@@ -1,6 +1,8 @@
 # fpl-transfer-abuse
 Finds who made the worst transfers in your mini-league this week and sends the poor lad an e-mail letting him know.
 
+![Settings Window](https://raw.github.com/James-Fallon/fpl-transfer-abuse/master/img/email_screenshot.PNG)
+
 ## Install
 Written for Python 3.6.5.
 Run `pip install -r requirements.txt` to install dependencies.
