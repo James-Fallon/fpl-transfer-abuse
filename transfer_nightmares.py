@@ -49,7 +49,16 @@ lads_and_their_transfers = {}
 
 for id, name in getUsers(league_ID):
     json_transfers = requests.get(transfers_url.format(id)).json()
+
     current_gameweek_number = json_transfers['entry']['current_event']
+
+    didHeHaveAFreeTransfer = False
+    for gw_number in range(2,current_gameweek_number):
+        count = 0
+        for transfer in json_transfers['history']:
+            if transfer['event'] == gw_number:
+                count = count + 1
+        didHeHaveAFreeTransfer = (count == 0) or (didHeHaveAFreeTransfer and count < 2)
 
     this_weeks_transfers = [parseTransfer(transfer) for transfer in json_transfers["history"] if transfer["event"] == current_gameweek_number]
 
@@ -63,12 +72,25 @@ for id, name in getUsers(league_ID):
         if wildcard['event'] == current_gameweek_number:
             has_wildcarded = True
 
+    #See if a hit was taken
+    hit_cost = 0
+    if has_wildcarded == False:
+        num_transfers_this_week = len(this_weeks_transfers)
+        num_allowed_transfers = (2 if didHeHaveAFreeTransfer else 1)
+
+        extra_transfers = num_transfers_this_week - num_allowed_transfers
+        if extra_transfers > 0:
+            hit_cost = extra_transfers * -4
+
+    total_delta += hit_cost
+
     this_lads_details = {
         'name': name,
         'transfers': this_weeks_transfers,
         'total_delta': total_delta,
         'on_wildcard': has_wildcarded,
-        'gw': current_gameweek_number
+        'gw': current_gameweek_number,
+        'hit_cost': hit_cost
     }
 
     lads_and_their_transfers[id] = this_lads_details
@@ -76,7 +98,7 @@ for id, name in getUsers(league_ID):
 worst_delta = -1, 0
 for lad in lads_and_their_transfers:
     lads_total_delta = lads_and_their_transfers[lad]['total_delta']
-    if lads_total_delta < worst_delta[1]:
+    if lads_total_delta < worst_delta[1] and lads_and_their_transfers[lad]['on_wildcard'] == False:
         worst_delta = lad, lads_total_delta
 
 if worst_delta[0] == -1:

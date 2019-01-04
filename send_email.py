@@ -33,6 +33,8 @@ def send_email(lad_who_did_the_worst):
         html += 'Your transfers; '
         for transfer in lad_who_did_the_worst['transfers']:
             html += transfer['out'] + ' ---> ' + transfer['in'] + ', '
+        if lad_who_did_the_worst['hit_cost']:
+            html += ' which to remind you cost you ' + str(lad_who_did_the_worst['hit_cost']) + ' points, and thus '
         html += 'netted you a total of ' + str(lad_who_did_the_worst['total_delta']) + ''' points.<br><br>
                 <b>Ye good call getting us out you flop!</b><br>'''
         for transfer in lad_who_did_the_worst['transfers']:
