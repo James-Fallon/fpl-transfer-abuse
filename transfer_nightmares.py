@@ -1,21 +1,21 @@
-import json, requests
+import requests
 import os
 from pprint import pprint
 from send_email import send_email
 from send_email_summary import send_summary
 
 # Change these to true to send emails
-should_send_summary = False
+should_send_summary = True
 should_send_who_messed_up = False
 
-#Variables
+# Variables
 league_ID = 271140
 
 # FPL API Endpoints
-transfers_url = 'https://fantasy.premierleague.com/drf/entry/{}/transfers'
-league_details_url = 'http://fantasy.premierleague.com/drf/leagues-classic-standings/{}?phase=1&le-page=1&ls-page=1'
+transfers_url = 'https://fantasy.premierleague.com/api/entry/{}/transfers'
+league_details_url = 'http://fantasy.premierleague.com/api/leagues-classic-standings/{}?phase=1&le-page=1&ls-page=1'
 
-all_player_details_json = (requests.get('https://fantasy.premierleague.com/drf/bootstrap-static').json())["elements"]
+all_player_details_json = (requests.get('https://fantasy.premierleague.com/api/bootstrap-static').json())["elements"]
 
 # Parse player-details into id-indexed dict
 all_player_details = {}
@@ -23,25 +23,30 @@ for i in range(len(all_player_details_json)):
     id = all_player_details_json[i]["id"]
     all_player_details[id] = all_player_details_json[i]
 
-def getPhotoOfPlayer(playerId):
+
+def get_photo_of_player(playerId):
     photo_id = all_player_details[playerId]["photo"]
     pre, ext = os.path.splitext(photo_id)
     photo_png_file = pre + ".png"
     photo_url = "https://platform-static-files.s3.amazonaws.com/premierleague/photos/players/110x140/p" + photo_png_file
     return photo_url
 
-def getChipPlayed(userId, gw_num):
-    return requests.get("https://fantasy.premierleague.com/drf/entry/" + str(userId) + "/event/" + str(gw_num) + "/picks").json()["active_chip"]
 
-def getLeagueName(league_id):
+def get_chip_played(userId, gw_num):
+    return requests.get("https://fantasy.premierleague.com/api/entry/" + str(userId) + "/event/" + str(gw_num) + "/picks").json()["active_chip"]
+
+
+def get_league_name(league_id):
     return requests.get(league_details_url.format(str(league_id))).json()["league"]["name"]
 
-def getUsers(league_id):
-    jsonResponse = requests.get(league_details_url.format(str(league_id))).json()
-    standings = jsonResponse["standings"]["results"]
+
+def get_users(league_id):
+    json_response = requests.get(league_details_url.format(str(league_id))).json()
+    standings = json_response["standings"]["results"]
     return list(map(lambda x: (x["entry"], x["player_name"], x["entry_name"]), standings))
 
-def parseTransfer(transfer):
+
+def parse_transfer(transfer):
     tr_in = transfer['element_in']
     tr_out = transfer['element_out']
 
@@ -49,40 +54,43 @@ def parseTransfer(transfer):
     tr_in_pnts = all_player_details[tr_in]['event_points']
     delta = tr_in_pnts - tr_out_pnts
 
-    parsedTransfer = {
+    parsed_transfer = {
         'out': all_player_details[tr_out]['web_name'],
         'out_points': tr_out_pnts,
-        'out_photo': getPhotoOfPlayer(tr_out),
+        'out_photo': get_photo_of_player(tr_out),
         'in': all_player_details[tr_in]['web_name'],
         'in_points': tr_in_pnts,
-        'in_photo': getPhotoOfPlayer(tr_in),
+        'in_photo': get_photo_of_player(tr_in),
         'delta': delta,
     }
-    return parsedTransfer
+    return parsed_transfer
+
 
 lads_and_their_transfers = {}
 
-for id, name, team_name in getUsers(league_ID):
+current_gameweek_number = 0
+
+for id, name, team_name in get_users(league_ID):
     json_transfers = requests.get(transfers_url.format(id)).json()
     current_gameweek_number = json_transfers['entry']['current_event']
 
     didHeHaveAFreeTransfer = False
-    for gw_number in range(2,current_gameweek_number):
+    for gw_number in range(2, current_gameweek_number):
         count = 0
         for transfer in json_transfers['history']:
             if transfer['event'] == gw_number:
                 count = count + 1
         didHeHaveAFreeTransfer = (count == 0) or (didHeHaveAFreeTransfer and count < 2)
 
-    this_weeks_transfers = [parseTransfer(transfer) for transfer in json_transfers["history"] if transfer["event"] == current_gameweek_number]
+    this_weeks_transfers = [parse_transfer(transfer) for transfer in json_transfers["history"] if transfer["event"] == current_gameweek_number]
 
     total_delta = 0
     for transfer in this_weeks_transfers:
         total_delta += transfer['delta']
 
-    chip_played = getChipPlayed(id, current_gameweek_number)
+    chip_played = get_chip_played(id, current_gameweek_number)
 
-    #See if a hit was taken
+    # See if a hit was taken
     hit_cost = 0
     extra_transfers = 0
     if chip_played != 'freehit' and chip_played != 'wildcard':
@@ -128,10 +136,10 @@ else:
 
 if (worst_delta[0] != -1) and (best_delta[0] != -1) and should_send_summary:
     week_info = {
-        'league_name': getLeagueName(league_ID),
+        'league_name': get_league_name(league_ID),
         'gw_number': current_gameweek_number,
         'mvp': lads_and_their_transfers[best_delta[0]],
         'shitebag': lads_and_their_transfers[worst_delta[0]]
     }
-    pprint(week_info);
+    pprint(week_info)
     send_summary(week_info)

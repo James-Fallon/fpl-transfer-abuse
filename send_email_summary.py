@@ -9,10 +9,11 @@ pwd = 'YOUR GMAIL SMTP PASSWORD'
 COMMASPACE = ', '
 
 email_addresses = {
-  #'Name of lad in league': "their email", e.g):
-  #'Ben Kenobi': "hello-there@high-ground.com",
-  #'Zaphod Beeblebrox': "best-bang@since-the-big-one.com"
+  # 'Name of lad in league': "their email", e.g):
+  # 'Ben Kenobi': "hello-there@high-ground.com",
+  # 'Zaphod Beeblebrox': "best-bang@since-the-big-one.com"
 }
+
 
 def create_transfers_table(transfers, hits):
     number_of_free_transfers = len(transfers) - hits
@@ -25,6 +26,7 @@ def create_transfers_table(transfers, hits):
         transfers_table_string += f"<tr><td class=\"cell\">{transfer['out']} ({transfer['out_points']} points)</td>{seperator}<td class=\"cell\">{transfer['in']} ({transfer['in_points']} points)</td></tr>"
     transfers_table_string += "</table>"
     return transfers_table_string
+
 
 def send_summary(week_info):
 
@@ -51,20 +53,20 @@ def send_summary(week_info):
             text-align: center;
             color: white;
         }
-    	h2 {
-    	  color: #90CCF4;
-    	  border-bottom: 1px solid #000000;
-    	  border-right: 1px solid #000000;
-    	  display: table;
-    	}
-    	h3 {
-    		padding: 0px;
-    		margin: 0px;
-    	}
-    	p {
-    		padding: 5px;
-    		margin: 0px;
-    	}
+        h2 {
+            color: #90CCF4;
+            border-bottom: 1px solid #000000;
+            border-right: 1px solid #000000;
+            display: table;
+        }
+        h3 {
+            padding: 0px;
+            margin: 0px;
+        }
+        p {
+            padding: 5px;
+            margin: 0px;
+        }
       </style>
     </head>'''
 
@@ -82,7 +84,6 @@ def send_summary(week_info):
     shitebag_transfers_table = create_transfers_table(week_info['shitebag']['transfers'], week_info['shitebag']['hits'])
 
     # MOVEMENTS
-
 
     full_html_string = f'''
     <html>
