@@ -15,13 +15,6 @@ class Player:
         photo_url = "https://platform-static-files.s3.amazonaws.com/premierleague/photos/players/110x140/p" + photo_png_file
         return photo_url
 
-    def get_details(self):
-        return {
-            'name': self.name,
-            'points': self.points,
-            'photo_url': self.photo_url
-        }
-
     def __str__(self):
         return f'{self.name}: {self.points} points'
 
