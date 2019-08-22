@@ -1,145 +1,80 @@
-import requests
-import os
-from pprint import pprint
-from send_email import send_email
+from fpl_api import FPLClient
+from contestant import Contestant
+from player import Player
+from settings import FPL_LOGIN, FPL_PWD
 from send_email_summary import send_summary
 
-# Change these to true to send emails
-should_send_summary = True
-should_send_who_messed_up = False
-
-# Variables
-league_ID = 271140
-
-# FPL API Endpoints
-transfers_url = 'https://fantasy.premierleague.com/api/entry/{}/transfers'
-league_details_url = 'http://fantasy.premierleague.com/api/leagues-classic-standings/{}?phase=1&le-page=1&ls-page=1'
-
-all_player_details_json = (requests.get('https://fantasy.premierleague.com/api/bootstrap-static').json())["elements"]
-
-# Parse player-details into id-indexed dict
-all_player_details = {}
-for i in range(len(all_player_details_json)):
-    id = all_player_details_json[i]["id"]
-    all_player_details[id] = all_player_details_json[i]
+import click
 
 
-def get_photo_of_player(playerId):
-    photo_id = all_player_details[playerId]["photo"]
-    pre, ext = os.path.splitext(photo_id)
-    photo_png_file = pre + ".png"
-    photo_url = "https://platform-static-files.s3.amazonaws.com/premierleague/photos/players/110x140/p" + photo_png_file
-    return photo_url
+@click.command()
+@click.option('--league-id')
+def cli(league_id):
 
+    # 0. Login
 
-def get_chip_played(userId, gw_num):
-    return requests.get("https://fantasy.premierleague.com/api/entry/" + str(userId) + "/event/" + str(gw_num) + "/picks").json()["active_chip"]
+    fpl_client = FPLClient(FPL_LOGIN, FPL_PWD)
 
+    # 1. Get GW Number and populate Players list from FPL
+    all_players = {}
+    gw_number, player_data_json = fpl_client.get_all_players_data()
+    for player in player_data_json:
+        all_players[player["id"]] = Player(player["web_name"], player["photo"], player["event_points"])
 
-def get_league_name(league_id):
-    return requests.get(league_details_url.format(str(league_id))).json()["league"]["name"]
+    # 2. Get league details
+    league_details = fpl_client.get_league_details(league_id)
 
+    # 3. Create list of Contestants
+    contestants = []
+    for entry in league_details["standings"]["results"]:
 
-def get_users(league_id):
-    json_response = requests.get(league_details_url.format(str(league_id))).json()
-    standings = json_response["standings"]["results"]
-    return list(map(lambda x: (x["entry"], x["player_name"], x["entry_name"]), standings))
+        contestant_id = entry["entry"]
+        contestant_transfers_history = fpl_client.get_contestants_transfers(contestant_id)
 
+        if contestant_transfers_history:
+            this_weeks_transfers = []
+            for transfer in contestant_transfers_history:
+                if transfer['event'] == gw_number:
+                    this_weeks_transfers.append({
+                        'in': all_players[transfer['element_in']],
+                        'out': all_players[transfer['element_out']]
+                    })
 
-def parse_transfer(transfer):
-    tr_in = transfer['element_in']
-    tr_out = transfer['element_out']
+            if this_weeks_transfers:
+                transfer_details = {
+                    'has_free_transfer': calculate_if_contestant_had_a_free_transfer(gw_number, contestant_transfers_history),
+                    'moves': this_weeks_transfers
+                }
 
-    tr_out_pnts = all_player_details[tr_out]['event_points']
-    tr_in_pnts = all_player_details[tr_in]['event_points']
-    delta = tr_in_pnts - tr_out_pnts
+                contestant_chip_played = fpl_client.get_chip_played(contestant_id, gw_number)
 
-    parsed_transfer = {
-        'out': all_player_details[tr_out]['web_name'],
-        'out_points': tr_out_pnts,
-        'out_photo': get_photo_of_player(tr_out),
-        'in': all_player_details[tr_in]['web_name'],
-        'in_points': tr_in_pnts,
-        'in_photo': get_photo_of_player(tr_in),
-        'delta': delta,
-    }
-    return parsed_transfer
+                contestants.append(Contestant(contestant_id,
+                                              entry["player_name"],
+                                              entry["entry_name"],
+                                              transfer_details,
+                                              contestant_chip_played))
 
+    contestants.sort(key=lambda x: x.points_delta, reverse=True)
 
-lads_and_their_transfers = {}
-
-current_gameweek_number = 0
-
-for id, name, team_name in get_users(league_ID):
-    json_transfers = requests.get(transfers_url.format(id)).json()
-    current_gameweek_number = json_transfers['entry']['current_event']
-
-    didHeHaveAFreeTransfer = False
-    for gw_number in range(2, current_gameweek_number):
-        count = 0
-        for transfer in json_transfers['history']:
-            if transfer['event'] == gw_number:
-                count = count + 1
-        didHeHaveAFreeTransfer = (count == 0) or (didHeHaveAFreeTransfer and count < 2)
-
-    this_weeks_transfers = [parse_transfer(transfer) for transfer in json_transfers["history"] if transfer["event"] == current_gameweek_number]
-
-    total_delta = 0
-    for transfer in this_weeks_transfers:
-        total_delta += transfer['delta']
-
-    chip_played = get_chip_played(id, current_gameweek_number)
-
-    # See if a hit was taken
-    hit_cost = 0
-    extra_transfers = 0
-    if chip_played != 'freehit' and chip_played != 'wildcard':
-        num_allowed_transfers = (2 if didHeHaveAFreeTransfer else 1)
-
-        extra_transfers = len(this_weeks_transfers) - num_allowed_transfers
-        if extra_transfers > 0:
-            hit_cost = extra_transfers * -4
-
-    total_delta += hit_cost
-
-    this_lads_details = {
-        'name': name,
-        'team_name': team_name,
-        'transfers': this_weeks_transfers,
-        'total_delta': total_delta,
-        'chip_played': chip_played,
-        'gw': current_gameweek_number,
-        'hits': extra_transfers,
-        'hit_cost': hit_cost
-    }
-
-    lads_and_their_transfers[id] = this_lads_details
-
-best_delta = -1, 0
-worst_delta = -1, 0
-for lad in lads_and_their_transfers:
-    this_lads_total_delta = lads_and_their_transfers[lad]['total_delta']
-    this_lads_played_chip = lads_and_their_transfers[lad]['chip_played']
-
-    if this_lads_total_delta < worst_delta[1] and this_lads_played_chip != 'wildcard' and this_lads_played_chip != 'freehit':
-        worst_delta = lad, this_lads_total_delta
-    if this_lads_total_delta > best_delta[1] and this_lads_played_chip != 'wildcard' and this_lads_played_chip != 'freehit':
-        best_delta = lad, this_lads_total_delta
-
-if worst_delta[0] == -1:
-    print("No-one messed up this week. No email will be sent.")
-else:
-    print('\nWorst Call:\n')
-    pprint(lads_and_their_transfers[worst_delta[0]])
-    if should_send_who_messed_up:
-        send_email(lads_and_their_transfers[worst_delta[0]])
-
-if (worst_delta[0] != -1) and (best_delta[0] != -1) and should_send_summary:
     week_info = {
-        'league_name': get_league_name(league_ID),
-        'gw_number': current_gameweek_number,
-        'mvp': lads_and_their_transfers[best_delta[0]],
-        'shitebag': lads_and_their_transfers[worst_delta[0]]
+        'league_name': league_details["league"]["name"],
+        'gw_number': gw_number,
+        'mvp': contestants[0],
+        'shitebag': contestants[-1]
     }
-    pprint(week_info)
     send_summary(week_info)
+
+
+def calculate_if_contestant_had_a_free_transfer(gw_number, contestant_transfers):
+    free_transfer = False
+    for gw in range(2, gw_number):
+        count = 0
+        for transfer in contestant_transfers:
+            if transfer['event'] == gw:
+                count = count + 1
+        free_transfer = (count == 0) or (free_transfer and count < 2)
+    return free_transfer
+
+
+if __name__ == '__main__':
+    cli()
