@@ -39,7 +39,7 @@ class FPLClient:
         return self.session.get(self.fpl_contestant_transfers_url(contestant_id)).json()
 
     def get_chip_played(self, user_id, gw_num):
-        url = f'{self.fpl_contestant_url(user_id)}/event/{gw_num}/picks'
+        url = f'{self.fpl_contestant_url(user_id)}/event/{gw_num}/picks/'
         return self.session.get(url).json().get("active_chip")
 
     def get_league_details(self, league_id):
