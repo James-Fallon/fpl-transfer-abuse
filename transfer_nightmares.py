@@ -48,11 +48,12 @@ def cli(league_id):
 
                 contestant_chip_played = fpl_client.get_chip_played(contestant_id, gw_number)
 
-                contestants.append(Contestant(contestant_id,
-                                              entry["player_name"],
-                                              entry["entry_name"],
-                                              transfer_details,
-                                              contestant_chip_played))
+                if contestant_chip_played not in Contestant.SAFE_CHIPS:
+                    contestants.append(Contestant(contestant_id,
+                                                  entry["player_name"],
+                                                  entry["entry_name"],
+                                                  transfer_details,
+                                                  contestant_chip_played))
 
     contestants.sort(key=lambda x: x.points_delta, reverse=True)
 
