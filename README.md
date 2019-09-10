@@ -1,7 +1,7 @@
 # fpl-transfer-abuse
 Finds who made the best and worst transfers in your mini-league this week and sends a group email letting everyone know.
 
-![Sample Email](https://raw.github.com/James-Fallon/fpl-transfer-abuse/master/img/summary.PNG)
+![Sample Email](https://raw.github.com/James-Fallon/fpl-transfer-abuse/master/img/summary.png)
 
 ## Install
 Written for Python 3.6.5.
