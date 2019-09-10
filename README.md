@@ -1,14 +1,19 @@
 # fpl-transfer-abuse
-Finds who made the worst transfers in your mini-league this week and sends the poor lad an e-mail letting him know.
+Finds who made the best and worst transfers in your mini-league this week and sends a group email letting everyone know.
 
-![Settings Window](https://raw.github.com/James-Fallon/fpl-transfer-abuse/master/img/email_screenshot.PNG)
+![Sample Email](https://raw.github.com/James-Fallon/fpl-transfer-abuse/master/img/summary.PNG)
 
 ## Install
 Written for Python 3.6.5.
 Run `pip install -r requirements.txt` to install dependencies.
 
-## Run
-You'll need to replace the league ID in `transfer_nightmares.py` with your own league ID. Then just run `python transfer_nightmares.py`
+## Configure
+In settings.py, you'll have to add the following:
+ - Your FPL login details (This year the FPL API needs authentication)
+ - Details of an SMTP email (Used for sending the email summary)
+ - List of email addresses to send it to
 
-## Send email
-In `send_email.py` you'll have to enter the first names and email addresses of your league members in the `email-addresses` dict, and enter a valid Gmail SMTP email/pwd combo at the the top of the file.
+## Run
+` python transfer_nightmares.py --league-id=<your_league_id>` 
+
+with your own league ID.
