@@ -26,7 +26,7 @@ def send_summary(week_info):
 
     msg['Subject'] = f"{week_info['league_name']} - GW {week_info['gw_number']} Summary"
     msg['From'] = SMTP_USER
-    msg['To'] = COMMASPACE.join(EMAIL_ADDRESSES.values())
+    msg['To'] = COMMASPACE.join(EMAIL_ADDRESSES)
 
     # MVP
     mvp_details = f"<h3>{week_info['mvp'].name}</h3><p>{week_info['mvp'].team_name}</p><p>&nbsp</p>"
@@ -67,5 +67,5 @@ def send_summary(week_info):
     s.login(SMTP_USER, SMTP_PWD)
     # sendmail function takes 3 arguments: sender's address, recipient's address
     # and message to send - here it is sent as one string.
-    s.sendmail(SMTP_USER, EMAIL_ADDRESSES.values(), msg.as_string())
+    s.sendmail(SMTP_USER, EMAIL_ADDRESSES, msg.as_string())
     s.quit()
