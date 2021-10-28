@@ -4,7 +4,7 @@ Finds who made the best and worst transfers in your mini-league this week and se
 ![Sample Email](https://raw.github.com/James-Fallon/fpl-transfer-abuse/master/img/summary.png)
 
 ## Install
-Written for Python 3.6.5.
+Written for Python 3.8.
 Run `pip install -r requirements.txt` to install dependencies.
 
 ## Configure
