@@ -12,7 +12,7 @@ class Player:
     def _create_photo_url(photo_id):
         pre, ext = os.path.splitext(photo_id)
         photo_png_file = pre + ".png"
-        photo_url = "https://platform-static-files.s3.amazonaws.com/premierleague/photos/players/110x140/p" + photo_png_file
+        photo_url = "https://resources.premierleague.com/premierleague/photos/players/110x140/p" + photo_png_file
         return photo_url
 
     def __str__(self):
